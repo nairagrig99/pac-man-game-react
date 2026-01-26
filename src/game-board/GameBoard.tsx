@@ -15,11 +15,11 @@ export default function GameBoard() {
     const [obstacleState, setObstacleState] = useState<PositionType[]>();
     const [styles, setStyles] = useState<{ width: string; left: string }[]>([]);
     const stoneState: PositionType[] = [];
-    const horizontalStartPoint = 0;
+    const horizontalStartPoint = 10;
     const startingPoint = {x: horizontalStartPoint, y: 20};
     const movePoint = {x: 20, y: 20};
     // change to Map to Set
-    const gap = 40;
+    const gap = 60;
 
     const setObstaclesStyles = () => {
         if (boxBoundaryRef.current && obstacleBlock.current.length) {
@@ -34,7 +34,7 @@ export default function GameBoard() {
                 };
 
             });
-            console.log("newStyles", newStyles)
+
             setStyles(newStyles);
         }
     }
@@ -75,22 +75,27 @@ export default function GameBoard() {
 
             const boardWidth = Math.floor(boxBoundaryRef.current.getBoundingClientRect().width);
             const boardHeight = Math.floor(boxBoundaryRef.current.getBoundingClientRect().height);
+
             const divisionWidth = boardWidth / 2;
             const halfOfTheBoard = divisionWidth / 10;
 
             const boardHeightDivision = boardHeight / 20;
 
             let ind = 0;
-            const obstacle = obstacleState[ind];
+            let obstacle = obstacleState[ind];
 
-            console.log("obstacle", obstacle)
+            console.log("obstacle", obstacle);
+
             const obstacleRect = obstacle.element.getBoundingClientRect();
 
             const width = Math.floor(obstacleRect.width);
-            const endPoint = width + obstacle.x + movePoint.x
+            let endPoint = width + obstacle.x + movePoint.x;
+            const NEAR_DISTANCE = 10;
             let startPointIsSet = false;
+
             for (let i = 1; i < boardHeightDivision; i++) {
-                second: for (let j = 0; j < halfOfTheBoard; j++) {
+                second: for (let j = 0; j < halfOfTheBoard - 1; j++) {
+
                     const dot = document.createElement('p');
                     dot.classList.add('w-[5px]', 'h-[5px]', 'bg-red-500', 'absolute', 'top-0', 'left-0');
 
@@ -99,45 +104,44 @@ export default function GameBoard() {
 
                     startingPoint.x += movePoint.x;
 
-                    const xPos = obstacle.x >= startingPoint.x;
-                    const yPos = obstacle.y >= startingPoint.y;
+                    const xPos = Math.abs(obstacle.x - startingPoint.x) <= NEAR_DISTANCE;
+                    const yPos = obstacle.y === startingPoint.y;
 
                     if (xPos && yPos) {
+                        // debugger
+                        console.log("obstacle", obstacle.x)
+                        console.log("startingPoint", startingPoint.x)
+
                         startPointIsSet = true;
                         boxBoundaryRef.current?.appendChild(dot);
+                        stoneState.push({x: startingPoint.x, y: startingPoint.y, element: dot});
                     }
 
-                    // console.log(" Math.abs(startingPoint.x - endPoint", Math.abs(startingPoint.x - endPoint));
-
-                    const isEqual = Math.abs(startingPoint.x - endPoint) <= 10;
-
-                    // console.log("obstacle.x", obstacle.x)
-                    if (startPointIsSet && startingPoint.x <= endPoint) {
-                        continue second
-                    } else {
-                        startPointIsSet = false;
-                        // console.log("startPointIsSet");
+                    if (startPointIsSet && startingPoint.x >= endPoint) {
+                        ind++;
+                        if (ind < obstacleState?.length) {
+                            console.log("here work time")
+                            obstacle = obstacleState[ind];
+                            endPoint = width + obstacle.x + movePoint.x;
+                        }
                     }
+
+                    if (startPointIsSet && startingPoint.x <= endPoint) continue second
+                    else startPointIsSet = false;
 
                     boxBoundaryRef.current?.appendChild(dot);
-                    stoneState.push({x: startingPoint.x, y: startingPoint.y, element: dot})
-                    if (isEqual) {
-                        // console.log("isEqual", isEqual)
-                        ind++;
-                        console.log("obstacle", ind)
-                    }
-                    console.log("obstacleobstacle", ind)
+                    stoneState.push({x: startingPoint.x, y: startingPoint.y, element: dot});
                 }
                 startingPoint.y += movePoint.y
                 startingPoint.x = horizontalStartPoint
             }
         }
+        console.log("stoneState", stoneState)
     }, [obstacleState]);
-
 
     return <div ref={boxBoundaryRef}
                 className="w-[800px] mx-auto h-[300px] border absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div ref={boardRef} className="relative">
+        <div ref={boardRef} className="">
             {[...Array(1)].map((_, index) => (
                 [...Array(3)].map((_, ind) => (
                     <div
@@ -148,7 +152,7 @@ export default function GameBoard() {
                         }}
                         className={index == 1
                             ? `${classes.SECOND_LINE_OBSTACLE}`
-                            : `${classes.OBSTACLE_CLASS} absolute top-[20px]`
+                            : `${classes.OBSTACLE_CLASS} absolute top-[80px]`
                         }>
                         {index == 1 && <div className={classes.LINE}></div>}
                     </div>
