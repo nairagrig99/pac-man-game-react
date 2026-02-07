@@ -8,7 +8,6 @@ export default function Player() {
 
     }
 
-
     return <div ref={playerRef} className="w-[20px] h-[20px] bg-amber-400 rounded-full relative
                             before:content-[''] before:absolute before:w-[3px] before:h-[3px]
                             before:bg-black before:rounded-full before:top-[7px] before:left-[5px]
