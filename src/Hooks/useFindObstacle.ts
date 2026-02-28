@@ -8,10 +8,12 @@ export default function useFindObstacle() {
 
             const visualX = Math.floor(elRect.left - parentRect.left);
             const visualY = Math.floor(elRect.top - parentRect.top);
+            const endPoint = Math.floor(elRect.width + visualX);
 
             return {
                 x: visualX,
                 y: visualY,
+                endPoint,
                 element
             }
         })

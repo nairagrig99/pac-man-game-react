@@ -8,11 +8,12 @@ import {useObstacles} from "../State/store.ts";
 export type PositionType = {
     x: number,
     y: number,
+    endPoint?:number,
     element?: HTMLDivElement
 }
 export default function GameBoard() {
 
-    const {setBoundaries, setObstacles} = useObstacles()
+    const {setBoundaries, setObstacles,setDots} = useObstacles()
 
     const classes = StyleEnum;
 
@@ -176,7 +177,6 @@ export default function GameBoard() {
                         stoneState.push({x: startingPoint.x, y: startingPoint.y, element: dot});
                     }
 
-
                     if ((startPointIsSet && startingPoint.x > endPoint) || heightPos) {
                         ind++;
                         if (ind < endIndex) {
@@ -231,12 +231,12 @@ export default function GameBoard() {
                 ind = startIndex
                 updateCurrentObstacle(ind)
             }
-            console.log('stoneState', stoneState)
+            // console.log('stoneState', stoneState)
+            setDots(stoneState)
         }
-
-
     }, [obstacleState]);
 
+    // console.log("first compoent work");
 
     return <div ref={boxBoundaryRef}
                 className="w-[800px] mx-auto h-[300px] border absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
