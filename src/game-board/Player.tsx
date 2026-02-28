@@ -39,23 +39,21 @@ const Player = memo(function Player() {
         rightInterval: 0,
     }
 
-    // console.log("second compoent");
-    // 1. First, create a ref to store pre-calculated bounds
+
     const obstacleBounds = useRef([]);
 
-// 2. Update these bounds ONLY when obstacles change (not every frame!)
+
     useEffect(() => {
         obstacleBounds.current = obstacles.map(obs => {
             const r = rect(obs.element);
             return {
                 x: obs.x,
                 y: obs.y,
-                right: obs.x + r.width,
+                right: obs.x + r.width - 20,
                 bottom: obs.y + r.height
             };
         });
     }, [obstacles]);
-
 
     const checkObstacleCollision = (position) => {
         const PLAYER_SIZE = 20;
@@ -83,28 +81,28 @@ const Player = memo(function Player() {
 
     const handleDownMovement = () => {
         directionIntervals.downInterval = setInterval(() => {
-            movePlayer({x: movePoints.x, y: movePoints.y++}, directionIntervals.downInterval, 'downInterval')
+            movePlayer(movementRule('downInterval', movePoints), directionIntervals.downInterval, 'downInterval')
         }, MOVEMENT_DELAY)
         state.current = directionIntervals.downInterval
     }
 
     const handleRightMovement = () => {
         directionIntervals.rightInterval = setInterval(() => {
-            movePlayer({x: movePoints.x++, y: movePoints.y}, directionIntervals.rightInterval, 'rightInterval')
+            movePlayer(movementRule('rightInterval', movePoints), directionIntervals.rightInterval, 'rightInterval')
         }, MOVEMENT_DELAY)
         state.current = directionIntervals.rightInterval
     }
 
     const handleUPMovement = () => {
         directionIntervals.upInterval = setInterval(() => {
-            movePlayer({x: movePoints.x, y: movePoints.y--}, directionIntervals.upInterval, 'upInterval')
+            movePlayer(movementRule('upInterval', movePoints), directionIntervals.upInterval, 'upInterval')
         }, MOVEMENT_DELAY)
         state.current = directionIntervals.upInterval
     }
 
     const handleLeftMovement = () => {
         directionIntervals.leftInterval = setInterval(() => {
-            movePlayer({x: movePoints.x--, y: movePoints.y}, directionIntervals.leftInterval, 'leftInterval')
+            movePlayer(movementRule('leftInterval', movePoints), directionIntervals.leftInterval, 'leftInterval')
         }, MOVEMENT_DELAY)
         state.current = directionIntervals.leftInterval
     }
