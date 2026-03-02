@@ -1,10 +1,10 @@
 import {useEffect, useRef} from "react";
 import {KeyDownEnum} from "../enums/keyDown-enum.ts";
 import {useObstacles} from "../State/store.ts";
-import UseBoundaryDetection from "../Hooks/useBoundaryDetection.ts";
-import useClientRect from "../Hooks/useClientRect.ts";
+
 import type {PositionType} from "./GameBoard.tsx";
 import {memo} from 'react';
+import {boundaryDetection, collisionDetector, positionsDetector} from "../Utils/utils.ts";
 
 const Player = memo(function Player() {
 
@@ -12,13 +12,10 @@ const Player = memo(function Player() {
     const boundary = useRef<HTMLDivElement>(null);
     const obstacleRef = useRef<PositionType[]>([]);
     const stoneState = useRef<PositionType[]>([]);
-
-    const useBoundaryDetection = UseBoundaryDetection();
     const {boundaries, obstacles, dots} = useObstacles();
 
     const movePoints = {x: 5, y: 10};
     const MOVEMENT_DELAY = 20;
-    const rect = useClientRect();
 
     const directionIntervals = {
         downInterval: 0,
@@ -39,36 +36,14 @@ const Player = memo(function Player() {
         rightInterval: 0,
     }
 
-    // console.log("second compoent");
-    // 1. First, create a ref to store pre-calculated bounds
     const obstacleBounds = useRef([]);
+    const stoneBounds = useRef([]);
 
-// 2. Update these bounds ONLY when obstacles change (not every frame!)
     useEffect(() => {
-        obstacleBounds.current = obstacles.map(obs => {
-            const r = rect(obs.element);
-            return {
-                x: obs.x,
-                y: obs.y,
-                right: obs.x + r.width,
-                bottom: obs.y + r.height
-            };
-        });
-    }, [obstacles]);
+        obstacleBounds.current = positionsDetector(obstacles)
+        stoneBounds.current = positionsDetector(dots)
+    }, [obstacles, dots]);
 
-
-    const checkObstacleCollision = (position) => {
-        const PLAYER_SIZE = 20;
-        const threshold = 1;
-        return obstacleBounds.current.some((obs) => {
-            return (
-                position.x + threshold < obs.right &&
-                position.x + PLAYER_SIZE - threshold > obs.x &&
-                position.y + threshold < obs.bottom &&
-                position.y + PLAYER_SIZE - threshold > obs.y
-            );
-        });
-    };
 
     const handleKeyDown = ((event) => {
         state.previous = state.current;
@@ -83,34 +58,34 @@ const Player = memo(function Player() {
 
     const handleDownMovement = () => {
         directionIntervals.downInterval = setInterval(() => {
-            movePlayer({x: movePoints.x, y: movePoints.y++}, directionIntervals.downInterval, 'downInterval')
+            movePlayer(movementRule('downInterval', movePoints), directionIntervals.downInterval, 'downInterval')
         }, MOVEMENT_DELAY)
         state.current = directionIntervals.downInterval
     }
 
     const handleRightMovement = () => {
         directionIntervals.rightInterval = setInterval(() => {
-            movePlayer({x: movePoints.x++, y: movePoints.y}, directionIntervals.rightInterval, 'rightInterval')
+            movePlayer(movementRule('rightInterval', movePoints), directionIntervals.rightInterval, 'rightInterval')
         }, MOVEMENT_DELAY)
         state.current = directionIntervals.rightInterval
     }
 
     const handleUPMovement = () => {
         directionIntervals.upInterval = setInterval(() => {
-            movePlayer({x: movePoints.x, y: movePoints.y--}, directionIntervals.upInterval, 'upInterval')
+            movePlayer(movementRule('upInterval', movePoints), directionIntervals.upInterval, 'upInterval')
         }, MOVEMENT_DELAY)
         state.current = directionIntervals.upInterval
     }
 
     const handleLeftMovement = () => {
         directionIntervals.leftInterval = setInterval(() => {
-            movePlayer({x: movePoints.x--, y: movePoints.y}, directionIntervals.leftInterval, 'leftInterval')
+            movePlayer(movementRule('leftInterval', movePoints), directionIntervals.leftInterval, 'leftInterval')
         }, MOVEMENT_DELAY)
         state.current = directionIntervals.leftInterval
     }
 
     const movePlayer = (position, intervale, key) => {
-        const obstacleHit = checkObstacleCollision(position)
+        const obstacleHit = collisionDetector(position, obstacleBounds)
         movementPositions[key] = position;
         if (obstacleHit) {
             const findPrev = Object.values(directionIntervals).findIndex((prev) => prev === state.previous);
@@ -121,7 +96,7 @@ const Player = memo(function Player() {
                 const movement = movementPositions[keys];
                 directionIntervals[keys] = setInterval(() => {
                     const mov = movementRule(keys, movement);
-                    const obstacleHit = checkObstacleCollision(position)
+                    const obstacleHit = collisionDetector(position, obstacleBounds)
 
                     if (obstacleHit) {
                         movePoints.x = mov?.x
@@ -133,15 +108,19 @@ const Player = memo(function Player() {
             }
         }
 
-
         if (playerRef.current && !obstacleHit) {
             playerRef.current.style.transform = `translate(${position.x}px, ${position.y}px)`;
         }
 
         if (playerRef.current &&
             boundary.current &&
-            useBoundaryDetection.findNearBoundary(playerRef.current, boundary.current)) {
+            boundaryDetection(playerRef.current, boundary.current)) {
             clearInterval(intervale);
+        }
+        const dotsHit = collisionDetector(position, stoneBounds)
+
+        if (dotsHit){
+            console.log('dot hitytttttttt');
         }
     }
     const movementRule = (direction: string, position) => {
