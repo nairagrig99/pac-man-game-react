@@ -1,20 +1,21 @@
 import {StyleEnum} from "../constants/style-enum.ts";
 import {useEffect, useRef, useState} from "react";
-import useStyle from "../Hooks/use-style.ts";
-import useFindObstacle from "../Hooks/useFindObstacle.ts";
+import {useStyle} from "../Hooks/use-style.ts";
 import Player from "./Player.tsx";
 import {useObstacles} from "../State/store.ts";
+import {clientRect, findObstacleDetector} from "../Utils/utils.ts";
+
 
 export type PositionType = {
     x: number,
     y: number,
-    endPoint?:number,
+    endPoint?: number,
     element?: HTMLDivElement
 }
 export default function GameBoard() {
 
-    const {setBoundaries, setObstacles,setDots} = useObstacles()
-
+    const {setBoundaries, setObstacles, setDots} = useObstacles()
+    const boundRect = clientRect()
     const classes = StyleEnum;
 
     const boardRef = useRef<HTMLDivElement>(null);
@@ -27,9 +28,6 @@ export default function GameBoard() {
 
     // custom hook for setting styles
     const obstacleStyle = useStyle();
-    //custom hook for finding obstacles
-    const useFind = useFindObstacle();
-
     const stoneState: PositionType[] = [];
 
     const horizontalStartPoint = 10;
@@ -38,8 +36,8 @@ export default function GameBoard() {
 
     useEffect(() => {
         if (obstacleStyle.styles.length && obstacleRef.current.length) {
-            const findObstacle = useFind.findObstacle(obstacleRef, boardRef);
-            const findInnerObstacle = useFind.findObstacle(innerObstacleRef, boardRef)
+            const findObstacle = findObstacleDetector(obstacleRef, boardRef);
+            const findInnerObstacle = findObstacleDetector(innerObstacleRef, boardRef)
             setObstacleState(findObstacle);
             setObstacles([...findObstacle, ...findInnerObstacle])
         }
@@ -53,9 +51,9 @@ export default function GameBoard() {
     }, []);
 
     useEffect(() => {
-        //This code handles drawing the dots while preventing them from being drawn on obstacles.
+        // This code handles drawing the dots while preventing them from being drawn on obstacles.
         if (obstacleState?.length && boxBoundaryRef.current) {
-            const box = boxBoundaryRef.current.getBoundingClientRect();
+            const box = boundRect(boxBoundaryRef.current);
 
             const boardWidth = Math.floor(box.width);
             const boardHeight = Math.floor(box.height);
@@ -70,7 +68,7 @@ export default function GameBoard() {
 
             let obstacle = obstacleState[ind];
             let obstacleCount = [];
-            const obstacleRect = obstacle.element.getBoundingClientRect();
+            const obstacleRect = boundRect(obstacle.element);
             const obstacleExist = [];
 
             let width = Math.floor(obstacleRect.width);
@@ -86,7 +84,7 @@ export default function GameBoard() {
             let innerIndex = 0;
             let innerObstacle = innerObstacleRef.current.flat()[innerIndex];
 
-            let rect = innerObstacle.getBoundingClientRect();
+            let rect = boundRect(innerObstacle);
             let leftRelative = Math.floor(rect.left - box.left);
             let bottomRelative = Math.floor(rect.bottom - box.top);
             let innerObstacleEndPoint = rect.width + leftRelative + movePoint.x;
@@ -95,7 +93,7 @@ export default function GameBoard() {
                 ind = newIndex;
                 obstacle = obstacleState[ind];
 
-                const rect = obstacle?.element?.getBoundingClientRect();
+                const rect = boundRect(obstacle.element)
                 if (!rect) return;
 
                 width = Math.floor(rect.width);
@@ -107,10 +105,22 @@ export default function GameBoard() {
             updateCurrentObstacle(ind)
             let shouldContinue = false;
 
+            const moveState = () => {
+                ind++;
+                if (ind < endIndex) {
+                    obstacle = obstacleState[ind];
+                    endPoint = width + obstacle.x + movePoint.x;
+                    heightPosition = height + obstacle.y;
+                }
+
+                if (ind > endIndex) {
+                    ind = startIndex
+                    updateCurrentObstacle(ind)
+                }
+            }
             for (let i = 1; i < boardHeightDivision; i++) {
 
-                second: for (let j = 0; j < halfOfTheBoard - 1; j++) {
-
+                for (let j = 0; j < halfOfTheBoard - 1; j++) {
                     const dot = document.createElement('p');
                     dot.classList.add('w-[5px]', 'h-[5px]', 'bg-gray-500', 'absolute', 'top-0', 'left-0');
 
@@ -132,7 +142,7 @@ export default function GameBoard() {
                         if (bottom) innerIndex++
                         if (innerIndex < 3) {
                             innerObstacle = innerObstacleRef.current.flat()[innerIndex];
-                            rect = innerObstacle.getBoundingClientRect();
+                            rect = boundRect(innerObstacle);
                             leftRelative = Math.floor(rect.left - box.left);
                             bottomRelative = Math.floor(rect.bottom - box.top);
                             innerObstacleEndPoint = rect.width + leftRelative + movePoint.x;
@@ -142,7 +152,7 @@ export default function GameBoard() {
                         }
                     }
 
-                    if (shouldContinue && startingPoint.x <= innerObstacleEndPoint) continue second
+                    if (shouldContinue && startingPoint.x <= innerObstacleEndPoint) continue
                     else shouldContinue = false
 
                     const xPos = Math.abs(obstacle.x - startingPoint.x) <= NEAR_DISTANCE;
@@ -154,20 +164,9 @@ export default function GameBoard() {
                     const isInside = heightPosition > startingPoint.y && (obstacle.y - 10 ! < startingPoint.y) && height === 90 &&
                         Math.abs(insideEndPoint - startingPoint.x) <= NEAR_DISTANCE;
 
-
                     if (isInside) {
-                        ind++;
-                        if (ind < endIndex) {
-                            obstacle = obstacleState[ind];
-                            endPoint = width + obstacle.x + movePoint.x;
-                            heightPosition = height + obstacle.y;
-                        }
-
-                        if (ind > endIndex) {
-                            ind = startIndex
-                            updateCurrentObstacle(ind)
-                        }
-                        continue second
+                        moveState()
+                        continue
                     }
 
                     if ((xPos && yPos) || heightPos) {
@@ -177,21 +176,9 @@ export default function GameBoard() {
                         stoneState.push({x: startingPoint.x, y: startingPoint.y, element: dot});
                     }
 
-                    if ((startPointIsSet && startingPoint.x > endPoint) || heightPos) {
-                        ind++;
-                        if (ind < endIndex) {
-                            obstacle = obstacleState[ind];
-                            endPoint = width + obstacle.x + movePoint.x;
-                            heightPosition = height + obstacle.y;
-                        }
+                    if ((startPointIsSet && startingPoint.x > endPoint) || heightPos) moveState()
 
-                        if (ind > endIndex) {
-                            ind = startIndex
-                            updateCurrentObstacle(ind)
-                        }
-                    }
-
-                    if (startPointIsSet && startingPoint.x < endPoint && i != boardHeightDivision - 1) continue second
+                    if (startPointIsSet && startingPoint.x < endPoint && i != boardHeightDivision - 1) continue
                     else startPointIsSet = false;
 
                     boxBoundaryRef.current?.appendChild(dot);
@@ -231,7 +218,6 @@ export default function GameBoard() {
                 ind = startIndex
                 updateCurrentObstacle(ind)
             }
-            // console.log('stoneState', stoneState)
             setDots(stoneState)
         }
     }, [obstacleState]);

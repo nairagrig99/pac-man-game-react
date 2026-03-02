@@ -1,6 +1,6 @@
 import {useState} from "react";
 
-export default function useStyle() {
+export  function useStyle() {
 
     const [styles, setStyles] = useState<{ width: string; left: string }[][]>([]);
     const gap = 40;
