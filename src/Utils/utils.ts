@@ -21,16 +21,61 @@ export function boundaryDetection(element: HTMLDivElement, boundary: HTMLDivElem
     return Object.values(near).some((isEqual) => isEqual);
 }
 
+
+export function collisionDotDetector(position, element) {
+    const PLAYER_SIZE = 20;
+
+    return element.current.findIndex((obs) => {
+        const playerCenterX = position.x + PLAYER_SIZE / 2;
+        const playerCenterY = position.y + PLAYER_SIZE / 2;
+
+        const dotCenterX = obs.x + (obs.right - obs.x) / 2;
+        const dotCenterY = obs.y + (obs.bottom - obs.y) / 2;
+
+        const distance = Math.hypot(
+            playerCenterX - dotCenterX,
+            playerCenterY - dotCenterY
+        );
+
+        return distance < 15;
+    });
+}
+
+let isInside = false;
+let obstacle = null
+
 export function collisionDetector(position: PositionType, element) {
     const PLAYER_SIZE = 20;
-    const threshold = 1;
     return element.current.some((obs) => {
-        return (
-            position.x + threshold < obs.right &&
-            position.x + PLAYER_SIZE - threshold > obs.x &&
-            position.y + threshold < obs.bottom &&
-            position.y + PLAYER_SIZE - threshold > obs.y
-        );
+        if (!isInside) {
+            //check if player inside (enter) obstacle
+            if (Math.abs(position.x - obs.right) <= 10
+                && position.y < obs.bottom &&
+                position.y + PLAYER_SIZE > obs.y
+                && obs.element.classList.contains('second_line')) {
+                obstacle = obs
+                isInside = true
+                console.log('ENTER')
+            } else {
+                isInside = false
+                return (
+                    position.x < obs.right &&
+                    position.x + PLAYER_SIZE > obs.x &&
+                    position.y < obs.bottom &&
+                    position.y + PLAYER_SIZE > obs.y
+                );
+            }
+        } else if (obstacle && isInside) {
+            // check if player exit from obstacle , and it can exit only from right side
+            if (position.x >= obstacle.right) isInside = false
+
+            //if player inside obstacle  then don't let exit  from it from other parts 'top, bottom,left'
+            if (position.y > obstacle.y
+                && position.y < obstacle.bottom - 20
+                && position.x > obstacle.x
+            ) return false
+            else return true
+        }
     });
 }
 
@@ -41,11 +86,11 @@ export function positionsDetector(elements) {
             x: obs.x,
             y: obs.y,
             right: obs.x + r.width - 20,
-            bottom: obs.y + r.height
+            bottom: obs.y + r.height,
+            element: obs.element
         };
     });
 }
-
 
 export function findObstacleDetector(obstacleRef, boardRef) {
     return obstacleRef.current.flat().map((element) => {

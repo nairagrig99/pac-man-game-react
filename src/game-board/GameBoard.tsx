@@ -102,7 +102,7 @@ export default function GameBoard() {
                 heightPosition = obstacle.y + height; // bottom edge
             };
 
-            updateCurrentObstacle(ind)
+            updateCurrentObstacle(ind);
             let shouldContinue = false;
 
             const moveState = () => {
@@ -122,7 +122,7 @@ export default function GameBoard() {
 
                 for (let j = 0; j < halfOfTheBoard - 1; j++) {
                     const dot = document.createElement('p');
-                    dot.classList.add('w-[5px]', 'h-[5px]', 'bg-gray-500', 'absolute', 'top-0', 'left-0');
+                    dot.classList.add('w-[5px]', 'h-[5px]', 'bg-gray-500', 'absolute', 'top-0', 'left-0','dots');
 
                     dot.style.top = ` ${startingPoint.y}px`;
                     dot.style.left = ` ${startingPoint.x}px`;
@@ -196,11 +196,8 @@ export default function GameBoard() {
                 // check if every obstacle work more then twice
                 const key = obstacle.y;
                 obstacleCount = obstacleExist.reduce((acc) => {
-                    if (!acc[key]) {
-                        acc[key] = 1;
-                    } else {
-                        acc[key] += 1;
-                    }
+                    if (!acc[key]) acc[key] = 1;
+                    else acc[key] += 1;
                     return acc
                 }, {})
 
@@ -221,8 +218,6 @@ export default function GameBoard() {
             setDots(stoneState)
         }
     }, [obstacleState]);
-
-    // console.log("first compoent work");
 
     return <div ref={boxBoundaryRef}
                 className="w-[800px] mx-auto h-[300px] border absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
