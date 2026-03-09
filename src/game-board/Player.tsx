@@ -4,7 +4,7 @@ import {useObstacles} from "../State/store.ts";
 
 import type {PositionType} from "./GameBoard.tsx";
 import {memo} from 'react';
-import {boundaryDetection, collisionDetector, positionsDetector} from "../Utils/utils.ts";
+import {boundaryDetection, collisionDetector, collisionDotDetector, positionsDetector} from "../Utils/utils.ts";
 
 const Player = memo(function Player() {
 
@@ -13,10 +13,8 @@ const Player = memo(function Player() {
     const obstacleRef = useRef<PositionType[]>([]);
     const stoneState = useRef<PositionType[]>([]);
     const {boundaries, obstacles, dots} = useObstacles();
-
     const movePoints = {x: 5, y: 10};
     const MOVEMENT_DELAY = 20;
-
     const directionIntervals = {
         downInterval: 0,
         upInterval: 0,
@@ -85,7 +83,9 @@ const Player = memo(function Player() {
     }
 
     const movePlayer = (position, intervale, key) => {
-        const obstacleHit = collisionDetector(position, obstacleBounds)
+        // collision for find obstacles when player hit them
+        const obstacleHit = collisionDetector(position, obstacleBounds);
+
         movementPositions[key] = position;
         if (obstacleHit) {
             const findPrev = Object.values(directionIntervals).findIndex((prev) => prev === state.previous);
@@ -96,13 +96,9 @@ const Player = memo(function Player() {
                 const movement = movementPositions[keys];
                 directionIntervals[keys] = setInterval(() => {
                     const mov = movementRule(keys, movement);
-                    const obstacleHit = collisionDetector(position, obstacleBounds)
-
-                    if (obstacleHit) {
-                        movePoints.x = mov?.x
-                        movePoints.y = mov?.y
-                        movePlayer(mov, directionIntervals[keys], keys);
-                    }
+                    movePoints.x = mov?.x
+                    movePoints.y = mov?.y
+                    movePlayer(mov, directionIntervals[keys], keys);
                 }, MOVEMENT_DELAY)
                 state.current = directionIntervals[keys]
             }
@@ -117,11 +113,19 @@ const Player = memo(function Player() {
             boundaryDetection(playerRef.current, boundary.current)) {
             clearInterval(intervale);
         }
-        const dotsHit = collisionDetector(position, stoneBounds)
 
-        if (dotsHit){
-            console.log('dot hitytttttttt');
+        // collision for find dots when player hit them
+        const dotsHitIndex = collisionDotDetector(position, stoneBounds);
+
+        if (dotsHitIndex >= 0) {
+            const dots = Array.from(document.querySelectorAll('.dots'));
+
+            if (dots[dotsHitIndex] && stoneBounds.current[dotsHitIndex]) {
+                dots[dotsHitIndex].remove();
+                stoneBounds.current.splice(dotsHitIndex,1)
+            }
         }
+
     }
     const movementRule = (direction: string, position) => {
         if (direction === 'downInterval') {
