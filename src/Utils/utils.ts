@@ -42,11 +42,13 @@ export function collisionDotDetector(position, element) {
 }
 
 let isInside = false;
+let isExit = false;
 let obstacle = null
 
-export function collisionDetector(position: PositionType, element) {
+export function collisionDetector(position: PositionType, element,calback?) {
     const PLAYER_SIZE = 20;
     return element.current.some((obs) => {
+
         if (!isInside) {
             //check if player inside (enter) obstacle
             if (Math.abs(position.x - obs.right) <= 10
@@ -55,26 +57,32 @@ export function collisionDetector(position: PositionType, element) {
                 && obs.element.classList.contains('second_line')) {
                 obstacle = obs
                 isInside = true
-                console.log('ENTER')
+
             } else {
                 isInside = false
-                return (
-                    position.x < obs.right &&
+                return position.x < obs.right &&
                     position.x + PLAYER_SIZE > obs.x &&
                     position.y < obs.bottom &&
                     position.y + PLAYER_SIZE > obs.y
-                );
             }
         } else if (obstacle && isInside) {
             // check if player exit from obstacle , and it can exit only from right side
-            if (position.x >= obstacle.right) isInside = false
+            if (position.x > obstacle.right) {
+                console.log("EXIT")
+                isInside = false
+                isExit = true
+                return false
+            }
 
-            //if player inside obstacle  then don't let exit  from it from other parts 'top, bottom,left'
-            if (position.y > obstacle.y
+            //if player inside obstacle  then don't let exit from other parts 'top, bottom,left'
+            if (!(position.y > obstacle.y
                 && position.y < obstacle.bottom - 20
-                && position.x > obstacle.x
-            ) return false
-            else return true
+                && position.x > obstacle.x)
+            ) {
+                calback(true)
+                isExit = false
+                return false
+            }
         }
     });
 }

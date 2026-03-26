@@ -1,11 +1,13 @@
 import './App.css'
 import GameBoard from "./game-board/GameBoard.tsx";
+import {useState} from "react";
 
 function App() {
+    const [gameId, setGameId] = useState<number>(0);
 
     return (
         <>
-            <GameBoard/>
+            <GameBoard key={gameId} setId={setGameId}/>
         </>
     )
 }

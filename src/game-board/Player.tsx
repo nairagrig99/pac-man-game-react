@@ -1,26 +1,26 @@
-import {useEffect, useRef} from "react";
+import {forwardRef, useEffect, useRef} from "react";
 import {KeyDownEnum} from "../enums/keyDown-enum.ts";
 import {useObstacles} from "../State/store.ts";
-
 import type {PositionType} from "./GameBoard.tsx";
 import {memo} from 'react';
 import {boundaryDetection, collisionDetector, collisionDotDetector, positionsDetector} from "../Utils/utils.ts";
+import type {StateProps} from "./Enemies.tsx";
 
-const Player = memo(function Player() {
+const Player = memo(forwardRef<HTMLDivElement, StateProps>(function Player({reduceState, setWinner}, playerRef) {
 
-    const playerRef = useRef<HTMLDivElement>(null);
     const boundary = useRef<HTMLDivElement>(null);
     const obstacleRef = useRef<PositionType[]>([]);
     const stoneState = useRef<PositionType[]>([]);
     const {boundaries, obstacles, dots} = useObstacles();
-    const movePoints = {x: 5, y: 10};
-    const MOVEMENT_DELAY = 20;
-    const directionIntervals = {
+    const movePoints: PositionType = {x: 5, y: 10};
+    const MOVEMENT_DELAY: number = 10;
+
+    const directionIntervals = useRef({
         downInterval: 0,
         upInterval: 0,
         leftInterval: 0,
         rightInterval: 0,
-    }
+    })
 
     const state = {
         current: 0,
@@ -45,9 +45,8 @@ const Player = memo(function Player() {
 
     const handleKeyDown = ((event) => {
         state.previous = state.current;
-        const intervals = Object.values(directionIntervals)
+        Object.values(directionIntervals.current).forEach((interval) => clearInterval(interval));
 
-        intervals.forEach((interval) => clearInterval(interval));
         if (event.key === KeyDownEnum.DOWN) handleDownMovement();
         if (event.key === KeyDownEnum.UP) handleUPMovement();
         if (event.key === KeyDownEnum.LEFT) handleLeftMovement();
@@ -55,52 +54,57 @@ const Player = memo(function Player() {
     });
 
     const handleDownMovement = () => {
-        directionIntervals.downInterval = setInterval(() => {
-            movePlayer(movementRule('downInterval', movePoints), directionIntervals.downInterval, 'downInterval')
+        directionIntervals.current.downInterval = setInterval(() => {
+            movePlayer(movementRule('downInterval', movePoints), directionIntervals.current.downInterval, 'downInterval')
         }, MOVEMENT_DELAY)
-        state.current = directionIntervals.downInterval
+        state.current = directionIntervals.current.downInterval
     }
 
     const handleRightMovement = () => {
-        directionIntervals.rightInterval = setInterval(() => {
-            movePlayer(movementRule('rightInterval', movePoints), directionIntervals.rightInterval, 'rightInterval')
+        directionIntervals.current.rightInterval = setInterval(() => {
+            movePlayer(movementRule('rightInterval', movePoints), directionIntervals.current.rightInterval, 'rightInterval')
         }, MOVEMENT_DELAY)
-        state.current = directionIntervals.rightInterval
+        state.current = directionIntervals.current.rightInterval
     }
 
     const handleUPMovement = () => {
-        directionIntervals.upInterval = setInterval(() => {
-            movePlayer(movementRule('upInterval', movePoints), directionIntervals.upInterval, 'upInterval')
+        directionIntervals.current.upInterval = setInterval(() => {
+            movePlayer(movementRule('upInterval', movePoints), directionIntervals.current.upInterval, 'upInterval')
         }, MOVEMENT_DELAY)
-        state.current = directionIntervals.upInterval
+        state.current = directionIntervals.current.upInterval
     }
 
     const handleLeftMovement = () => {
-        directionIntervals.leftInterval = setInterval(() => {
-            movePlayer(movementRule('leftInterval', movePoints), directionIntervals.leftInterval, 'leftInterval')
+        directionIntervals.current.leftInterval = setInterval(() => {
+            movePlayer(movementRule('leftInterval', movePoints), directionIntervals.current.leftInterval, 'leftInterval')
         }, MOVEMENT_DELAY)
-        state.current = directionIntervals.leftInterval
+        state.current = directionIntervals.current.leftInterval
     }
 
-    const movePlayer = (position, intervale, key) => {
+    const movePlayer = (position, intervale, key: string) => {
+        if (!key.length) clearInterval(intervale);
         // collision for find obstacles when player hit them
-        const obstacleHit = collisionDetector(position, obstacleBounds);
+        const obstacleHit = collisionDetector(position, obstacleBounds, (isHit) => {
+            if (isHit) {
+                clearInterval(intervale);
+            }
+        });
 
         movementPositions[key] = position;
         if (obstacleHit) {
-            const findPrev = Object.values(directionIntervals).findIndex((prev) => prev === state.previous);
-            const keys = Object.keys(directionIntervals)[findPrev];
+            const findPrev = Object.values(directionIntervals.current).findIndex((prev) => prev === state.previous);
+            const keys = Object.keys(directionIntervals.current)[findPrev];
 
             if (keys) {
                 clearInterval(intervale);
                 const movement = movementPositions[keys];
-                directionIntervals[keys] = setInterval(() => {
+                directionIntervals.current[keys] = setInterval(() => {
                     const mov = movementRule(keys, movement);
                     movePoints.x = mov?.x
                     movePoints.y = mov?.y
-                    movePlayer(mov, directionIntervals[keys], keys);
+                    movePlayer(mov, directionIntervals.current[keys], keys);
                 }, MOVEMENT_DELAY)
-                state.current = directionIntervals[keys]
+                state.current = directionIntervals.current[keys]
             }
         }
 
@@ -110,7 +114,7 @@ const Player = memo(function Player() {
 
         if (playerRef.current &&
             boundary.current &&
-            boundaryDetection(playerRef.current, boundary.current)) {
+            boundaryDetection(playerRef.current, boundary.current) || obstacleHit) {
             clearInterval(intervale);
         }
 
@@ -122,24 +126,36 @@ const Player = memo(function Player() {
 
             if (dots[dotsHitIndex] && stoneBounds.current[dotsHitIndex]) {
                 dots[dotsHitIndex].remove();
-                stoneBounds.current.splice(dotsHitIndex,1)
+                stoneBounds.current.splice(dotsHitIndex, 1)
             }
         }
-
+        console.log("stoneBounds.current.length", stoneBounds.current.length)
+        if (stoneBounds.current.length <= 3) setWinner(true)
     }
-    const movementRule = (direction: string, position) => {
-        if (direction === 'downInterval') {
-            return {x: position.x, y: position.y++}
-        }
-        if (direction === 'rightInterval') {
-            return {x: position.x++, y: position.y}
-        }
-        if (direction === 'upInterval') {
-            return {x: position.x, y: position.y--}
-        }
-        if (direction === 'leftInterval') {
-            return {x: position.x--, y: position.y}
-        }
+
+    const stopAllMovement = () => {
+        Object.values(directionIntervals.current).forEach((interval) => {
+            if (interval) clearInterval(interval);
+        });
+        directionIntervals.current = {
+            downInterval: 0,
+            upInterval: 0,
+            leftInterval: 0,
+            rightInterval: 0,
+        };
+
+    };
+
+    useEffect(() => {
+        if (reduceState.message.length) stopAllMovement()
+    }, [reduceState]);
+
+
+    const movementRule = (direction: string, position: PositionType) => {
+        if (direction === 'downInterval') return {x: position.x, y: position.y++}
+        if (direction === 'rightInterval') return {x: position.x++, y: position.y}
+        if (direction === 'upInterval') return {x: position.x, y: position.y--}
+        if (direction === 'leftInterval') return {x: position.x--, y: position.y}
     }
 
     useEffect(() => {
@@ -153,13 +169,17 @@ const Player = memo(function Player() {
         stoneState.current = dots
     }, [boundaries, obstacles, dots]);
 
-    return <div ref={playerRef}
-                className="w-[20px] h-[20px] bg-amber-400 rounded-full absolute
+    return <>
+        <div ref={playerRef}
+             className="w-[20px] h-[20px] bg-amber-400 rounded-full absolute
+             player
                 left-[5px] top-[0px]
                             before:content-[''] before:absolute before:w-[3px] before:h-[3px]
                             before:bg-black before:rounded-full before:top-[7px] before:left-[5px]
                             after:content-[''] after:absolute after:w-[3px] after:h-[3px]
                             after:bg-black after:rounded-full after:top-[7px] after:right-[5px]">
-    </div>
-})
+        </div>
+    </>
+
+}))
 export default Player

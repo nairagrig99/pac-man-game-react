@@ -1,9 +1,12 @@
 import {StyleEnum} from "../constants/style-enum.ts";
-import {useEffect, useRef, useState} from "react";
+import {memo, useEffect, useReducer, useRef, useState} from "react";
 import {useStyle} from "../Hooks/use-style.ts";
 import Player from "./Player.tsx";
 import {useObstacles} from "../State/store.ts";
 import {clientRect, findObstacleDetector} from "../Utils/utils.ts";
+import Enemies from "./Enemies.tsx";
+import {gameStateReducer, initialReduceState} from "../Reducers/game-state.ts";
+import Popup from "../UI/Popup.tsx";
 
 
 export type PositionType = {
@@ -12,7 +15,14 @@ export type PositionType = {
     endPoint?: number,
     element?: HTMLDivElement
 }
-export default function GameBoard() {
+
+export type GameBoardProps = {
+    setId: (id: number) => void
+}
+const GameBoard = memo(({setId}: GameBoardProps) => {
+    const [state, dispatch] = useReducer(gameStateReducer, initialReduceState);
+
+    const [isWinner, setIsWinner] = useState<boolean>(false);
 
     const {setBoundaries, setObstacles, setDots} = useObstacles()
     const boundRect = clientRect()
@@ -20,6 +30,8 @@ export default function GameBoard() {
 
     const boardRef = useRef<HTMLDivElement>(null);
     const boxBoundaryRef = useRef<HTMLDivElement>(null);
+    const playerRef = useRef<HTMLDivElement>(null);
+    const svgRef = useRef<SVGSVGElement[]>([]);
 
     const obstacleRef = useRef<HTMLDivElement[][]>([]);
     const innerObstacleRef = useRef<HTMLDivElement[][]>([]);
@@ -122,7 +134,7 @@ export default function GameBoard() {
 
                 for (let j = 0; j < halfOfTheBoard - 1; j++) {
                     const dot = document.createElement('p');
-                    dot.classList.add('w-[5px]', 'h-[5px]', 'bg-gray-500', 'absolute', 'top-0', 'left-0','dots');
+                    dot.classList.add('w-[5px]', 'h-[5px]', 'bg-gray-500', 'absolute', 'top-0', 'left-0', 'dots');
 
                     dot.style.top = ` ${startingPoint.y}px`;
                     dot.style.left = ` ${startingPoint.x}px`;
@@ -219,6 +231,43 @@ export default function GameBoard() {
         }
     }, [obstacleState]);
 
+    useEffect(() => {
+        let animationFrameID: number;
+        console.log('svgRef', svgRef);
+        // const checkCollision = () => {
+        const int = setInterval(() => {
+            svgRef.current.some((enemie) => {
+
+                if (playerRef.current && enemie) {
+                    const playerRect = playerRef.current.getBoundingClientRect();
+                    const enemyRect = enemie.getBoundingClientRect();
+
+                    const isColliding = !(
+                        playerRect.right < enemyRect.left ||
+                        playerRect.left > enemyRect.right ||
+                        playerRect.bottom < enemyRect.top ||
+                        playerRect.top > enemyRect.bottom
+                    );
+
+                    if (isColliding) {
+                        dispatch({type: 'GAME_OVER'})
+                        return;
+                    }
+                    // animationFrameID = requestAnimationFrame(checkCollision);
+                }
+            })
+        }, 1000)
+
+
+        // }
+        // animationFrameID = requestAnimationFrame(checkCollision);
+        return () => clearInterval(int)
+    }, []);
+
+    useEffect(() => {
+        if (isWinner) dispatch({type: 'WIN_GAME'})
+    }, [isWinner]);
+
     return <div ref={boxBoundaryRef}
                 className="w-[800px] mx-auto h-[300px] border absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
         <div ref={boardRef} className="relative">
@@ -247,8 +296,28 @@ export default function GameBoard() {
                 ))
             ))}
 
-            <Player></Player>
+            <Player ref={playerRef} reduceState={state} setWinner={setIsWinner}></Player>
+
+            {[...Array(3)].map((_, index) => (
+                <Enemies
+                    key={index}
+                    reduceState={state}
+                    ref={(el) => (svgRef.current[index] = el)}
+                />
+            ))}
+
+            <Popup
+                isOpen={state?.message.length > 0}
+                onClose={() => {
+                    dispatch({type: 'PLAY_AGAIN'})
+                    setId((prev) => prev + 1)
+                }}
+                status={state?.message}
+            >
+            </Popup>
+
         </div>
     </div>
 
-}
+})
+export default GameBoard
