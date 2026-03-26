@@ -1,18 +1,20 @@
 import {StyleEnum} from "../constants/style-enum.ts";
-import {useEffect, useRef, useState} from "react";
+import {memo, useEffect, useReducer, useRef, useState} from "react";
 import {useStyle} from "../Hooks/use-style.ts";
 import Player from "./Player.tsx";
 import {useObstacles} from "../State/store.ts";
 import {clientRect, findObstacleDetector} from "../Utils/utils.ts";
+import Enemies from "./Enemies.tsx";
+import {gameStateReducer, initialReduceState} from "../Reducers/game-state.ts";
+import Popup from "../UI/Popup.tsx";
+import type {PositionType} from "../Model/PositionType.ts";
+import type {GameBoardProps} from "../Model/GameBoardPropsType.ts";
+import {PopupState} from "../enums/popup-enum.ts";
 
+const GameBoard = memo(({setId}: GameBoardProps) => {
+    const [state, dispatch] = useReducer(gameStateReducer, initialReduceState);
 
-export type PositionType = {
-    x: number,
-    y: number,
-    endPoint?: number,
-    element?: HTMLDivElement
-}
-export default function GameBoard() {
+    const [isWinner, setIsWinner] = useState<boolean>(false);
 
     const {setBoundaries, setObstacles, setDots} = useObstacles()
     const boundRect = clientRect()
@@ -20,6 +22,8 @@ export default function GameBoard() {
 
     const boardRef = useRef<HTMLDivElement>(null);
     const boxBoundaryRef = useRef<HTMLDivElement>(null);
+    const playerRef = useRef<HTMLDivElement>(null);
+    const svgRef = useRef<SVGSVGElement[]>([]);
 
     const obstacleRef = useRef<HTMLDivElement[][]>([]);
     const innerObstacleRef = useRef<HTMLDivElement[][]>([]);
@@ -122,7 +126,7 @@ export default function GameBoard() {
 
                 for (let j = 0; j < halfOfTheBoard - 1; j++) {
                     const dot = document.createElement('p');
-                    dot.classList.add('w-[5px]', 'h-[5px]', 'bg-gray-500', 'absolute', 'top-0', 'left-0','dots');
+                    dot.className = StyleEnum.DOT;
 
                     dot.style.top = ` ${startingPoint.y}px`;
                     dot.style.left = ` ${startingPoint.x}px`;
@@ -219,6 +223,34 @@ export default function GameBoard() {
         }
     }, [obstacleState]);
 
+
+    useEffect(() => {
+        const enemiesHitPlayerInterval = setInterval(() => {
+            svgRef.current.some((enemies) => {
+                if (playerRef.current && enemies) {
+                    const playerRect = playerRef.current.getBoundingClientRect();
+                    const enemyRect = enemies.getBoundingClientRect();
+
+                    const isColliding = !(
+                        playerRect.right < enemyRect.left ||
+                        playerRect.left > enemyRect.right ||
+                        playerRect.bottom < enemyRect.top ||
+                        playerRect.top > enemyRect.bottom
+                    );
+                    if (isColliding) {
+                        dispatch({type: PopupState.GAME_OVER})
+                        return;
+                    }
+                }
+            })
+        }, 500)
+        return () => clearInterval(enemiesHitPlayerInterval)
+    }, []);
+
+    useEffect(() => {
+        if (isWinner) dispatch({type: PopupState.WIN_GAME})
+    }, [isWinner]);
+
     return <div ref={boxBoundaryRef}
                 className="w-[800px] mx-auto h-[300px] border absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
         <div ref={boardRef} className="relative">
@@ -247,8 +279,28 @@ export default function GameBoard() {
                 ))
             ))}
 
-            <Player></Player>
+            <Player ref={playerRef} reduceState={state} setWinner={setIsWinner}></Player>
+
+            {[...Array(3)].map((_, index) => (
+                <Enemies
+                    key={index}
+                    reduceState={state}
+                    ref={(el) => (svgRef.current[index] = el)}
+                />
+            ))}
+
+            <Popup
+                isOpen={state?.message.length > 0}
+                onClose={() => {
+                    dispatch({type: PopupState.PLAY_AGAIN})
+                    setId((prev) => prev + 1)
+                }}
+                status={state?.message}
+            >
+            </Popup>
+
         </div>
     </div>
 
-}
+})
+export default GameBoard
