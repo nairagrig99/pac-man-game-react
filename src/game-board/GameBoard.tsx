@@ -7,18 +7,10 @@ import {clientRect, findObstacleDetector} from "../Utils/utils.ts";
 import Enemies from "./Enemies.tsx";
 import {gameStateReducer, initialReduceState} from "../Reducers/game-state.ts";
 import Popup from "../UI/Popup.tsx";
+import type {PositionType} from "../Model/PositionType.ts";
+import type {GameBoardProps} from "../Model/GameBoardPropsType.ts";
+import {PopupState} from "../enums/popup-enum.ts";
 
-
-export type PositionType = {
-    x: number,
-    y: number,
-    endPoint?: number,
-    element?: HTMLDivElement
-}
-
-export type GameBoardProps = {
-    setId: (id: number) => void
-}
 const GameBoard = memo(({setId}: GameBoardProps) => {
     const [state, dispatch] = useReducer(gameStateReducer, initialReduceState);
 
@@ -134,7 +126,7 @@ const GameBoard = memo(({setId}: GameBoardProps) => {
 
                 for (let j = 0; j < halfOfTheBoard - 1; j++) {
                     const dot = document.createElement('p');
-                    dot.classList.add('w-[5px]', 'h-[5px]', 'bg-gray-500', 'absolute', 'top-0', 'left-0', 'dots');
+                    dot.className = StyleEnum.DOT;
 
                     dot.style.top = ` ${startingPoint.y}px`;
                     dot.style.left = ` ${startingPoint.x}px`;
@@ -231,16 +223,13 @@ const GameBoard = memo(({setId}: GameBoardProps) => {
         }
     }, [obstacleState]);
 
-    useEffect(() => {
-        let animationFrameID: number;
-        console.log('svgRef', svgRef);
-        // const checkCollision = () => {
-        const int = setInterval(() => {
-            svgRef.current.some((enemie) => {
 
-                if (playerRef.current && enemie) {
+    useEffect(() => {
+        const enemiesHitPlayerInterval = setInterval(() => {
+            svgRef.current.some((enemies) => {
+                if (playerRef.current && enemies) {
                     const playerRect = playerRef.current.getBoundingClientRect();
-                    const enemyRect = enemie.getBoundingClientRect();
+                    const enemyRect = enemies.getBoundingClientRect();
 
                     const isColliding = !(
                         playerRect.right < enemyRect.left ||
@@ -248,24 +237,18 @@ const GameBoard = memo(({setId}: GameBoardProps) => {
                         playerRect.bottom < enemyRect.top ||
                         playerRect.top > enemyRect.bottom
                     );
-
                     if (isColliding) {
-                        dispatch({type: 'GAME_OVER'})
+                        dispatch({type: PopupState.GAME_OVER})
                         return;
                     }
-                    // animationFrameID = requestAnimationFrame(checkCollision);
                 }
             })
-        }, 1000)
-
-
-        // }
-        // animationFrameID = requestAnimationFrame(checkCollision);
-        return () => clearInterval(int)
+        }, 500)
+        return () => clearInterval(enemiesHitPlayerInterval)
     }, []);
 
     useEffect(() => {
-        if (isWinner) dispatch({type: 'WIN_GAME'})
+        if (isWinner) dispatch({type: PopupState.WIN_GAME})
     }, [isWinner]);
 
     return <div ref={boxBoundaryRef}
@@ -309,7 +292,7 @@ const GameBoard = memo(({setId}: GameBoardProps) => {
             <Popup
                 isOpen={state?.message.length > 0}
                 onClose={() => {
-                    dispatch({type: 'PLAY_AGAIN'})
+                    dispatch({type: PopupState.PLAY_AGAIN})
                     setId((prev) => prev + 1)
                 }}
                 status={state?.message}

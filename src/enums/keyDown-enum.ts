@@ -4,3 +4,10 @@ export enum KeyDownEnum {
     UP = 'ArrowUp',
     DOWN = 'ArrowDown'
 }
+
+export enum MoveDirection {
+    UP = 'upInterval',
+    DOWN = 'downInterval',
+    RIGHT = 'rightInterval',
+    LEFT = 'leftInterval'
+}

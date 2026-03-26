@@ -1,10 +1,11 @@
 import {forwardRef, useEffect, useRef} from "react";
-import {KeyDownEnum} from "../enums/keyDown-enum.ts";
+import {KeyDownEnum, MoveDirection} from "../enums/keyDown-enum.ts";
 import {useObstacles} from "../State/store.ts";
-import type {PositionType} from "./GameBoard.tsx";
 import {memo} from 'react';
 import {boundaryDetection, collisionDetector, collisionDotDetector, positionsDetector} from "../Utils/utils.ts";
-import type {StateProps} from "./Enemies.tsx";
+import type {StateProps} from "../Model/StatePropsType.ts";
+import type {PositionType} from "../Model/PositionType.ts";
+import {DIRECTIONS} from "../constants/constant.ts";
 
 const Player = memo(forwardRef<HTMLDivElement, StateProps>(function Player({reduceState, setWinner}, playerRef) {
 
@@ -15,6 +16,9 @@ const Player = memo(forwardRef<HTMLDivElement, StateProps>(function Player({redu
     const movePoints: PositionType = {x: 5, y: 10};
     const MOVEMENT_DELAY: number = 10;
 
+    const obstacleBounds = useRef([]);
+    const stoneBounds = useRef([]);
+
     const directionIntervals = useRef({
         downInterval: 0,
         upInterval: 0,
@@ -22,20 +26,14 @@ const Player = memo(forwardRef<HTMLDivElement, StateProps>(function Player({redu
         rightInterval: 0,
     })
 
+    const movementPositions = {...directionIntervals.current}
+
+    // this state for keeping previous and current state.
+    // everytime when player change direction and hit obstacle it should have previous movement
     const state = {
         current: 0,
         previous: 0,
     }
-
-    const movementPositions = {
-        downInterval: 0,
-        upInterval: 0,
-        leftInterval: 0,
-        rightInterval: 0,
-    }
-
-    const obstacleBounds = useRef([]);
-    const stoneBounds = useRef([]);
 
     useEffect(() => {
         obstacleBounds.current = positionsDetector(obstacles)
@@ -44,6 +42,8 @@ const Player = memo(forwardRef<HTMLDivElement, StateProps>(function Player({redu
 
 
     const handleKeyDown = ((event) => {
+        //don't let any other key
+        if (!Object.values(KeyDownEnum).includes(event.key)) return
         state.previous = state.current;
         Object.values(directionIntervals.current).forEach((interval) => clearInterval(interval));
 
@@ -55,34 +55,35 @@ const Player = memo(forwardRef<HTMLDivElement, StateProps>(function Player({redu
 
     const handleDownMovement = () => {
         directionIntervals.current.downInterval = setInterval(() => {
-            movePlayer(movementRule('downInterval', movePoints), directionIntervals.current.downInterval, 'downInterval')
+            movePlayer(movementRule(MoveDirection.DOWN, movePoints), directionIntervals.current.downInterval, MoveDirection.DOWN)
         }, MOVEMENT_DELAY)
         state.current = directionIntervals.current.downInterval
     }
 
     const handleRightMovement = () => {
         directionIntervals.current.rightInterval = setInterval(() => {
-            movePlayer(movementRule('rightInterval', movePoints), directionIntervals.current.rightInterval, 'rightInterval')
+            movePlayer(movementRule(MoveDirection.RIGHT, movePoints), directionIntervals.current.rightInterval, MoveDirection.RIGHT)
         }, MOVEMENT_DELAY)
         state.current = directionIntervals.current.rightInterval
     }
 
     const handleUPMovement = () => {
         directionIntervals.current.upInterval = setInterval(() => {
-            movePlayer(movementRule('upInterval', movePoints), directionIntervals.current.upInterval, 'upInterval')
+            movePlayer(movementRule(MoveDirection.UP, movePoints), directionIntervals.current.upInterval, MoveDirection.UP)
         }, MOVEMENT_DELAY)
         state.current = directionIntervals.current.upInterval
     }
 
     const handleLeftMovement = () => {
         directionIntervals.current.leftInterval = setInterval(() => {
-            movePlayer(movementRule('leftInterval', movePoints), directionIntervals.current.leftInterval, 'leftInterval')
+            movePlayer(movementRule(MoveDirection.LEFT, movePoints), directionIntervals.current.leftInterval, MoveDirection.LEFT)
         }, MOVEMENT_DELAY)
         state.current = directionIntervals.current.leftInterval
     }
 
     const movePlayer = (position, intervale, key: string) => {
         if (!key.length) clearInterval(intervale);
+
         // collision for find obstacles when player hit them
         const obstacleHit = collisionDetector(position, obstacleBounds, (isHit) => {
             if (isHit) {
@@ -129,7 +130,6 @@ const Player = memo(forwardRef<HTMLDivElement, StateProps>(function Player({redu
                 stoneBounds.current.splice(dotsHitIndex, 1)
             }
         }
-        console.log("stoneBounds.current.length", stoneBounds.current.length)
         if (stoneBounds.current.length <= 3) setWinner(true)
     }
 
@@ -137,13 +137,8 @@ const Player = memo(forwardRef<HTMLDivElement, StateProps>(function Player({redu
         Object.values(directionIntervals.current).forEach((interval) => {
             if (interval) clearInterval(interval);
         });
-        directionIntervals.current = {
-            downInterval: 0,
-            upInterval: 0,
-            leftInterval: 0,
-            rightInterval: 0,
-        };
 
+        directionIntervals.current = DIRECTIONS
     };
 
     useEffect(() => {
@@ -152,10 +147,10 @@ const Player = memo(forwardRef<HTMLDivElement, StateProps>(function Player({redu
 
 
     const movementRule = (direction: string, position: PositionType) => {
-        if (direction === 'downInterval') return {x: position.x, y: position.y++}
-        if (direction === 'rightInterval') return {x: position.x++, y: position.y}
-        if (direction === 'upInterval') return {x: position.x, y: position.y--}
-        if (direction === 'leftInterval') return {x: position.x--, y: position.y}
+        if (direction === MoveDirection.DOWN) return {x: position.x, y: position.y++}
+        if (direction === MoveDirection.RIGHT) return {x: position.x++, y: position.y}
+        if (direction === MoveDirection.UP) return {x: position.x, y: position.y--}
+        if (direction === MoveDirection.LEFT) return {x: position.x--, y: position.y}
     }
 
     useEffect(() => {

@@ -1,37 +1,25 @@
 import EnemiesSvg from "../UI/EnemiesSvg.tsx";
 import {forwardRef, memo, useEffect, useImperativeHandle, useRef} from "react";
-
-export type ReduceState = {
-    isWin: boolean;
-    message: string;
-};
-
-export type StateProps = {
-    reduceState: ReduceState;
-    setWinner?: (isWin: boolean) => void
-};
-
+import type {StateProps} from "../Model/StatePropsType.ts";
+import {MoveDirection} from "../enums/keyDown-enum.ts";
 
 const Enemies = memo(forwardRef<SVGSVGElement, StateProps>(({reduceState}, forwardedRef) => {
-    console.log("ref", forwardedRef)
 
-// 1. Create a local ref that we KNOW is an object
     const localRef = useRef<SVGSVGElement>(null);
 
-    // 2. Sync the localRef with the forwardedRef from the parent
     useImperativeHandle(forwardedRef, () => localRef.current!);
 
     const initialPosition = {x: 50, y: 70};
 
     const movementRule = (direction: string, position: { x: number, y: number }) => {
-        if (direction === 'downInterval' && position.y + 1 <= 250) return {x: position.x, y: position.y + 1};
-        if (direction === 'rightInterval' && position.x + 1 <= 760) return {x: position.x + 1, y: position.y};
-        if (direction === 'upInterval' && position.y - 1 > 0) return {x: position.x, y: position.y - 1};
-        if (direction === 'leftInterval' && position.x - 1 > 0) return {x: position.x - 1, y: position.y};
+        if (direction === MoveDirection.DOWN && position.y + 1 <= 250) return {x: position.x, y: position.y + 1};
+        if (direction === MoveDirection.RIGHT && position.x + 1 <= 700) return {x: position.x + 1, y: position.y};
+        if (direction === MoveDirection.UP && position.y - 1 > 0) return {x: position.x, y: position.y - 1};
+        if (direction === MoveDirection.LEFT && position.x - 1 > 0) return {x: position.x - 1, y: position.y};
         return null;
     };
 
-    const directionIntervals = ['downInterval', 'upInterval', 'leftInterval', 'rightInterval'];
+    const directionIntervals = [...Object.values(MoveDirection)];
 
     useEffect(() => {
         let position = {...initialPosition};
@@ -51,7 +39,6 @@ const Enemies = memo(forwardRef<SVGSVGElement, StateProps>(({reduceState}, forwa
             if (nextPos) {
                 position = nextPos;
                 if (localRef.current) {
-                    // debugger
                     localRef.current.style.transform = `translate(${position.x}px, ${position.y}px)`;
                 }
             } else {

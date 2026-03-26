@@ -14,7 +14,5 @@ export function gameStateReducer(state = initialReduceState, action) {
         case 'PLAY_AGAIN':
             alert("PLAY AGAIN")
             return {...state, isWin: false, message: ''}
-        case 'CLOSE':
-            return {...state, isWin: false, message: ''}
     }
 }
