@@ -1,1 +1,1 @@
-play game online - https://nairagrig99.github.io/pac-man-game-react/
+## play game online - https://nairagrig99.github.io/pac-man-game-react/
